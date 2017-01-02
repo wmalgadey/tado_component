@@ -179,6 +179,8 @@ class TadoData(object):
         return data        
     
     def _update(self):
+        _LOGGER.info("querying myTado.com")
+    
         for dataID, sensor in self.sensors.items():
             data = None
 
@@ -193,4 +195,4 @@ class TadoData(object):
         
             self.data[dataID] = data
             
-            _LOGGER.info(json.dumps(data))
+            #_LOGGER.info(json.dumps(data))

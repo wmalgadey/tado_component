@@ -7,7 +7,7 @@ from homeassistant.helpers.entity import Entity
 
 import voluptuous as vol
 
-import logging
+import logging, urllib
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,12 +33,15 @@ CONFIG_SCHEMA = vol.Schema({
 def setup(hass, config):
     """Your controller/hub specific code."""
 
+    username = config[DOMAIN][CONF_MYTADO_USERNAME]
+    password = config[DOMAIN][CONF_MYTADO_PASSWORD]
+    
     from PyTado.interface import Tado
 
     try:
-        tado = Tado(config[DOMAIN][CONF_MYTADO_USERNAME], config[DOMAIN][CONF_MYTADO_PASSWORD])   
-    except RuntimeError:
-        _LOGGER.error("Unable to connect to mytado with username and password")
+        tado = Tado(username, password)
+    except (RuntimeError, urllib.error.HTTPError) as error:
+        _LOGGER.error("Unable to connect to mytado with username and password", error)
         return False
 
     hass.data['Mytado']= tado

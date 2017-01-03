@@ -26,13 +26,9 @@ tado_v1:
 ## Use the new sensors in home-assistant
 For every zone in your tado setup we will create a sensor with a specific unit
 ```
-sensor.<name of tado zone>_temperature         (°C)
-sensor.<name of tado zone>_temperature_setting (°C)
-sensor.<name of tado zone>_temperature_time    (string)
-sensor.<name of tado zone>_humidity            (%)
-sensor.<name of tado zone>_humidity_time       (string)
-sensor.<name of tado zone>_heating             (%)
-sensor.<name of tado zone>_heating_time        (string)
+sensor.<name of tado zone>_temperature         (°C)   Attributes: { "setting" : °C, "time" : string }
+sensor.<name of tado zone>_humidity            (%)    Attributes: { "time" : string }
+sensor.<name of tado zone>_heating             (%)    Attributes: { "time" : string }
 sensor.<name of tado zone>_heating_mode        (string)
 sensor.<name of tado zone>_power               (string)
 sensor.<name of tado zone>_link                (string)

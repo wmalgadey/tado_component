@@ -9,9 +9,8 @@ from datetime import timedelta
 # DOMAIN = 'tado_v1'
 
 _LOGGER = logging.getLogger(__name__)
-SENSOR_TYPES = ['temperature', 'temperature time',
-   'humidity', 'humidity time', 'power', 'temperature setting',
-   'link', 'heating', 'heating time', 'tado mode']
+SENSOR_TYPES = ['temperature', 'humidity', 'power',
+   'link', 'heating', 'tado mode']
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
@@ -57,6 +56,7 @@ class TadoSensor(Entity):
         self._dataID = dataID
 
         self._state = None
+        self._stateAttributes = None
 
     @property
     def should_poll(self):
@@ -79,16 +79,28 @@ class TadoSensor(Entity):
         return self._state
 
     @property
+    def state_attributes(self):
+        """Return the state attributes.
+        Implemented by component base class.
+        """
+        return self._stateAttributes
+
+    @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         if self.zoneVariable == "temperature":
-            return TEMP_CELSIUS
-        elif self.zoneVariable == "temperature setting":
             return TEMP_CELSIUS
         elif self.zoneVariable == "humidity":
             return '%'
         elif self.zoneVariable == "heating":
             return '%'
+            
+    @property
+    def icon(self):
+        if self.zoneVariable == "temperature":
+            return 'mdi:thermometer'
+        elif self.zoneVariable == "humidity":
+            return 'mdi:water-percent'
 
     def update(self):
         self._tadoData.update()
@@ -99,30 +111,28 @@ class TadoSensor(Entity):
         if self.zoneVariable == 'temperature':
             if 'sensorDataPoints' in data:
                 self._state = float(data['sensorDataPoints']['insideTemperature']['celsius'])
-        elif self.zoneVariable == 'temperature time':
-            if 'sensorDataPoints' in data:
-                self._state = data['sensorDataPoints']['insideTemperature']['timestamp']
+                self._stateAttributes = {
+                    "time": data['sensorDataPoints']['insideTemperature']['timestamp'],
+                    "setting": float(data['setting']['temperature']['celsius'])
+                }
         elif self.zoneVariable == 'humidity':
             if 'sensorDataPoints' in data:
                 self._state = float(data['sensorDataPoints']['humidity']['percentage'])
-        elif self.zoneVariable == 'humidity time':
-            if 'sensorDataPoints' in data:
-                self._state = data['sensorDataPoints']['humidity']['timestamp']
+                self._stateAttributes = {
+                    "time": data['sensorDataPoints']['humidity']['timestamp'],
+                }
         elif self.zoneVariable == 'power':
             if 'setting' in data:
                 self._state = data['setting']['power']
-        elif self.zoneVariable == 'temperature setting': 
-            if 'setting' in data:
-                self._state = float(data['setting']['temperature']['celsius'])
         elif self.zoneVariable == 'link': 
             if 'link' in data:
                 self._state = data['link']['state']
         elif self.zoneVariable == 'heating': 
             if 'activityDataPoints' in data:
                 self._state = float(data['activityDataPoints']['heatingPower']['percentage'])
-        elif self.zoneVariable == 'heating time': 
-            if 'activityDataPoints' in data:
-                self._state = data['activityDataPoints']['heatingPower']['timestamp']
+                self._stateAttributes = {
+                    "time": data['activityDataPoints']['heatingPower']['timestamp'],
+                }
         elif self.zoneVariable == 'tado bridge status':
             if 'connectionState' in data:
                 self._state = data['connectionState']['value']

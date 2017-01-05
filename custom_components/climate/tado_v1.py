@@ -12,6 +12,17 @@ import logging
 import json
 from datetime import timedelta
 
+CONST_MODE_SMART_SCHEDULE = "SMART_SCHEDULE" # Default mytado mode
+CONST_MODE_OFF = "OFF"                       # Switch off heating in a zone 
+
+# When we change the temperature setting, we need an overlay mode
+CONST_OVERLAY_TADO_MODE = "TADO_MODE" # wait until tado changes the mode automatic
+CONST_OVERLAY_MANUAL    = "MANUAL"    # the user has change the temperature or mode manually
+CONST_OVERLAY_TIMER     = "TIMER"     # the temperature will be reset after a timespan
+
+CONST_DEFAULT_OPERATION_MODE = CONST_OVERLAY_TADO_MODE # will be used when changing temperature
+CONST_DEFAULT_OFF_MODE       = CONST_OVERLAY_MANUAL    # will be used when switching to CONST_MODE_OFF
+
 # DOMAIN = 'tado_v1'
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,12 +74,12 @@ class TadoClimate(ClimateDevice):
         self._min_temp = min_temp
         self._max_temp = max_temp
         self._target_temp = target_temp
-        self._overlay_mode = "SCHEDULE"
         self._tolerance = tolerance
         self._unit = TEMP_CELSIUS
         
-        self._operation_list = ["MANUAL", "TIMER", "TADO_MODE", "SCHEDULE", "OFF"]
-        self._current_operation = "SCHEDULE"
+        self._operation_list = [CONST_OVERLAY_MANUAL, CONST_OVERLAY_TIMER, CONST_OVERLAY_TADO_MODE, CONST_MODE_SMART_SCHEDULE, CONST_MODE_OFF]
+        self._current_operation = CONST_MODE_SMART_SCHEDULE
+        self._overlay_mode = self._current_operation
         
     @property
     def should_poll(self):
@@ -126,7 +137,7 @@ class TadoClimate(ClimateDevice):
         if temperature is None:
             return
 
-        self._current_operation = "MANUAL"
+        self._current_operation = CONST_DEFAULT_OPERATION_MODE
         self._overlay_mode = None
         self._target_temp = temperature
         self._control_heating()
@@ -193,7 +204,7 @@ class TadoClimate(ClimateDevice):
                 
             if type.endswith("power"):
                 if state.state == "OFF":
-                    self._current_operation = "OFF"
+                    self._current_operation = CONST_MODE_OFF
                     self._device_is_active = false
 
             if updateHa:
@@ -213,15 +224,15 @@ class TadoClimate(ClimateDevice):
         if not self._active or self._current_operation == self._overlay_mode:
             return
         
-        if self._current_operation == "SCHEDULE":
+        if self._current_operation == CONST_MODE_SMART_SCHEDULE:
             _LOGGER.info('Switching mytado.com to SCHEDULE (default) for zone %s', self.zoneName)
             self._tado.setZoneOverlay(self.zoneID, self._current_operation)
             self._overlay_mode = self._current_operation
             return
 
-        if self._current_operation == "OFF":
+        if self._current_operation == CONST_MODE_OFF:
             _LOGGER.info('Switching mytado.com to OFF for zone %s', self.zoneName)
-            self._tado.setZoneOverlay(self.zoneID, "MANUAL")
+            self._tado.setZoneOverlay(self.zoneID, CONST_DEFAULT_OFF_MODE)
             self._overlay_mode = self._current_operation
             return
         
@@ -232,7 +243,7 @@ class TadoClimate(ClimateDevice):
                 if too_hot:
                     _LOGGER.info('Switching mytado.com to schedule mode for zone %s', self.zoneName)
                     self._tado.resetZoneOverlay(self.zoneID)
-                    self._current_operation = "TADO_MODE"
+                    self._current_operation = CONST_MODE_SMART_SCHEDULE
             else:
                 too_cold = self._target_temp - self._cur_temp > self._tolerance
                 if too_cold:

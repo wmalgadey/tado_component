@@ -63,7 +63,7 @@ class TadoClimate(ClimateDevice):
         self._min_temp = min_temp
         self._max_temp = max_temp
         self._target_temp = target_temp
-        self._overlay_mode = None
+        self._overlay_mode = "TADO_MODE"
         self._tolerance = tolerance
         self._unit = TEMP_CELSIUS
         
@@ -127,6 +127,7 @@ class TadoClimate(ClimateDevice):
             return
 
         self._current_operation = "MANUAL"
+        self._overlay_mode = None
         self._target_temp = temperature
         self._control_heating()
         self.update_ha_state()
@@ -134,6 +135,7 @@ class TadoClimate(ClimateDevice):
     def set_operation_mode(self, operation_mode):
         """Set new target temperature."""
         self._current_operation = operation_mode
+        self._overlay_mode = None
         self._control_heating()
         self.update_ha_state()
 
@@ -208,31 +210,36 @@ class TadoClimate(ClimateDevice):
             _LOGGER.info('Obtained current and target temperature. '
                          'tado thermostat active.')
 
-        if not self._active:
+        if not self._active or self._current_operation == self._overlay_mode:
             return
         
         if self._current_operation == "TADO_MODE":
             _LOGGER.info('Switching mytado.com to TADO_MODE for %s', self.zoneName)
-            self._tado.setZoneOverlay(self.zoneID, self._current_operation)       
+            self._tado.setZoneOverlay(self.zoneID, self._current_operation)
+            self._overlay_mode = self._current_operation
+            return
+
+        if self._current_operation == "OFF":
+            _LOGGER.info('Switching mytado.com to OFF for %s', self.zoneName)
+            self._tado.setZoneOverlay(self.zoneID, "MANUAL")
+            self._overlay_mode = self._current_operation
             return
         
         if self.ac_mode == False:
-            if self._current_operation == "OFF":
-                _LOGGER.info('Switching mytado.com to OFF for %s', self.zoneName)
-                self._tado.setZoneOverlay(self.zoneID, self._current_operation)
-                return
-        
             is_heating = self._is_device_active
             if is_heating:
                 too_hot = self._cur_temp - self._target_temp > self._tolerance
                 if too_hot:
                     _LOGGER.info('Switching mytado.com to schedule mode for %s', self.zoneName)
                     self._tado.resetZoneOverlay(self.zoneID)
+                    self._current_operation = "TADO_MODE"
             else:
                 too_cold = self._target_temp - self._cur_temp > self._tolerance
                 if too_cold:
                     _LOGGER.info('Activating mytado.com heating for %s', self.zoneName)
                     self._tado.setZoneOverlay(self.zoneID, self._current_operation, self._target_temp)
+
+        self._overlay_mode = self._current_operation
 
 class TadoData(object):
     def __init__(self, tado):

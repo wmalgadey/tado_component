@@ -16,7 +16,7 @@ DOMAIN = 'tado_v1'
 REQUIREMENTS = ['https://github.com/wmalgadey/PyTado/archive/0.1.7.zip#PyTado==0.1.7']
 
 TADO_V1_COMPONENTS = [
-    'sensor',
+    'sensor', 'climate'
 ]
 
 CONF_MYTADO_USERNAME = 'mytado_username'

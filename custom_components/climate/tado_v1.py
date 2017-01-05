@@ -63,12 +63,12 @@ class TadoClimate(ClimateDevice):
         self._min_temp = min_temp
         self._max_temp = max_temp
         self._target_temp = target_temp
-        self._overlay_mode = "TADO_MODE"
+        self._overlay_mode = "SCHEDULE"
         self._tolerance = tolerance
         self._unit = TEMP_CELSIUS
         
-        self._operation_list = ["MANUAL", "TIMER", "TADO_MODE", "OFF"]
-        self._current_operation = "TADO_MODE"
+        self._operation_list = ["MANUAL", "TIMER", "TADO_MODE", "SCHEDULE", "OFF"]
+        self._current_operation = "SCHEDULE"
         
     @property
     def should_poll(self):
@@ -200,7 +200,7 @@ class TadoClimate(ClimateDevice):
                 self.schedule_update_ha_state()
 
         except ValueError as ex:
-            _LOGGER.error('Unable to update from sensor: %s', ex)
+            _LOGGER.error('Unable to update from sensor: {}'.format(type), ex)
 
     def _control_heating(self):
         """Send new target temperature to mytado."""
@@ -213,14 +213,14 @@ class TadoClimate(ClimateDevice):
         if not self._active or self._current_operation == self._overlay_mode:
             return
         
-        if self._current_operation == "TADO_MODE":
-            _LOGGER.info('Switching mytado.com to TADO_MODE for %s', self.zoneName)
+        if self._current_operation == "SCHEDULE":
+            _LOGGER.info('Switching mytado.com to SCHEDULE (default) for zone %s', self.zoneName)
             self._tado.setZoneOverlay(self.zoneID, self._current_operation)
             self._overlay_mode = self._current_operation
             return
 
         if self._current_operation == "OFF":
-            _LOGGER.info('Switching mytado.com to OFF for %s', self.zoneName)
+            _LOGGER.info('Switching mytado.com to OFF for zone %s', self.zoneName)
             self._tado.setZoneOverlay(self.zoneID, "MANUAL")
             self._overlay_mode = self._current_operation
             return
@@ -230,13 +230,13 @@ class TadoClimate(ClimateDevice):
             if is_heating:
                 too_hot = self._cur_temp - self._target_temp > self._tolerance
                 if too_hot:
-                    _LOGGER.info('Switching mytado.com to schedule mode for %s', self.zoneName)
+                    _LOGGER.info('Switching mytado.com to schedule mode for zone %s', self.zoneName)
                     self._tado.resetZoneOverlay(self.zoneID)
                     self._current_operation = "TADO_MODE"
             else:
                 too_cold = self._target_temp - self._cur_temp > self._tolerance
                 if too_cold:
-                    _LOGGER.info('Activating mytado.com heating for %s', self.zoneName)
+                    _LOGGER.info('Activating mytado.com heating for zone %s', self.zoneName)
                     self._tado.setZoneOverlay(self.zoneID, self._current_operation, self._target_temp)
 
         self._overlay_mode = self._current_operation

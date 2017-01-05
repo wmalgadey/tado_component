@@ -38,6 +38,17 @@ and one sensor for the bridge
 sensor.<name of tado home>_tado_bridge_status  (boolean)
 ```
 
+lastly I added a climate device for every zone
+```
+climate.<name of tado zone>
+```
+with the capabilities of changeing the temperature settings and the tado mode for manual changes. Away mode is not supported.
+```
+CONST_OVERLAY_TADO_MODE = "TADO_MODE" # wait until tado changes the mode automatic
+CONST_OVERLAY_MANUAL    = "MANUAL"    # the user has change the temperature or mode manually
+CONST_OVERLAY_TIMER     = "TIMER"     # the temperature will be reset after a timespan
+```
+
 # Links
 * Home-Assistant (http://home-assistant.io)
 * PyTado (https://github.com/chrism0dwk/PyTado) -> (https://github.com/wmalgadey/tado_component)

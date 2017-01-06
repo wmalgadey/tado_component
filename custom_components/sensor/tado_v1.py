@@ -10,8 +10,9 @@ from datetime import timedelta
 
 _LOGGER = logging.getLogger(__name__)
 SENSOR_TYPES = ['temperature', 'humidity', 'power',
-   'link', 'heating', 'tado mode']
+   'link', 'heating', 'tado mode', 'overlay']
 
+MIN_TIME_BETWEEN_SCANS = timedelta(seconds=10)
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Setup the sensor platform."""
@@ -25,7 +26,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
         _LOGGER.error("Unable to get zone info from mytado", error)
         return False
 
-    tadoData = TadoData(tado, timedelta(seconds=15))
+    tadoData = TadoData(tado, MIN_TIME_BETWEEN_SCANS)
         
     sensorItems = []
     for zone in zones:
@@ -104,7 +105,7 @@ class TadoSensor(Entity):
 
     def update(self):
         self._tadoData.update()
-
+        
         self.pushUpdate(self._tadoData.getData(self._dataID), True)
 
     def pushUpdate(self, data, updateHa):
@@ -139,6 +140,15 @@ class TadoSensor(Entity):
         elif self.zoneVariable == 'tado mode':
             if 'tadoMode' in data:
                 self._state = data['tadoMode']
+        elif self.zoneVariable == 'overlay':
+            if 'overlay' in data and data['overlay'] is not None:
+                self._state = True
+                self._stateAttributes = {
+                    "termination": data['overlay']['termination']['type'],
+                }
+            else:
+                self._state = False
+                self._stateAttributes = { }
 
         if updateHa:
             super().update_ha_state()
@@ -146,7 +156,6 @@ class TadoSensor(Entity):
 class TadoData(object):
     def __init__(self, tado, interval):
         self._tado = tado
-        self._interval = interval
         
         self.sensors = {}
         self.data = {}
@@ -189,20 +198,18 @@ class TadoData(object):
         return data        
     
     def _update(self):
-        _LOGGER.info("querying myTado.com")
-    
         for dataID, sensor in self.sensors.items():
             data = None
 
             try:
                 if "zone" in sensor:
+                    _LOGGER.info('querying mytado.com for zone {}'.format(json.dumps(sensor)))
                     data = self._tado.getState(sensor["id"])
                 if "device" in sensor:
+                    _LOGGER.info('querying mytado.com for device {}'.format(json.dumps(sensor)))
                     data = self._tado.getDevices()[0]
 
             except (RuntimeError) as error:
                 _LOGGER.error("Unable to connect to myTado. %s", error)
         
             self.data[dataID] = data
-            
-            #_LOGGER.info(json.dumps(data))

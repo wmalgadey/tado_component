@@ -26,7 +26,7 @@ CONST_DEFAULT_OFF_MODE       = CONST_OVERLAY_MANUAL    # will be used when switc
 # DOMAIN = 'tado_v1'
 
 _LOGGER = logging.getLogger(__name__)
-SENSOR_TYPES = ['temperature', 'humidity', 'heating', 'tado mode', 'power']
+SENSOR_TYPES = ['temperature', 'humidity', 'heating', 'tado mode', 'power', 'overlay']
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Setup the climate platform."""
@@ -181,6 +181,9 @@ class TadoClimate(ClimateDevice):
             self._control_heating()
 
     def updateState(self, type, state, updateHa):
+        if state.state == "unknown":
+            return
+
         try:
             if type.endswith("temperature"):
                 unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
@@ -191,21 +194,28 @@ class TadoClimate(ClimateDevice):
                 self._target_temp = self.hass.config.units.temperature(
                     float(state.attributes.get("setting")), unit)
 
-            if type.endswith("humidity"):
+            elif type.endswith("humidity"):
                 self._cur_humidity = float(state.state)
 
-            if type.endswith("heating"):
+            elif type.endswith("heating"):
                 heating_percent = float(state.state)
 
                 self._device_is_active = heating_percent > 0
 
-            if type.endswith("tado mode"):
+            elif type.endswith("tado mode"):
                 self._is_away = state.state == "AWAY"
                 
-            if type.endswith("power"):
+            elif type.endswith("power"):
                 if state.state == "OFF":
                     self._current_operation = CONST_MODE_OFF
                     self._device_is_active = false
+                    
+            elif type.endswith("overlay"):
+                termination = state.attributes.get("termination")
+
+                if termination is not None:
+                    self._overlay_mode = termination
+                    self._current_operation = termination
 
             if updateHa:
                 self.schedule_update_ha_state()
@@ -284,7 +294,7 @@ class TadoData(object):
 
             sensor_state = hass.states.get(entity_id)
             if sensor_state:
-                self.updateState(sensor_type, sensor_state, False)
+                device.updateState(sensor_type, sensor_state, False)
 
         return device
 

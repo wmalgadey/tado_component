@@ -1,13 +1,15 @@
-from homeassistant.components.discovery import load_platform
-from homeassistant.const import (EVENT_HOMEASSISTANT_START,
-                                 EVENT_HOMEASSISTANT_STOP)
+"""
+main file for the (unofficial) tado component
+"""
 
+import logging
+import urllib
+
+from homeassistant.components.discovery import load_platform
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.entity import Entity
 
 import voluptuous as vol
 
-import logging, urllib
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,19 +37,18 @@ def setup(hass, config):
 
     username = config[DOMAIN][CONF_MYTADO_USERNAME]
     password = config[DOMAIN][CONF_MYTADO_PASSWORD]
-    
+
     from PyTado.interface import Tado
 
     try:
         tado = Tado(username, password)
-    except (RuntimeError, urllib.error.HTTPError) as error:
-        _LOGGER.error("Unable to connect to mytado with username and password", error)
+    except (RuntimeError, urllib.error.HTTPError):
+        _LOGGER.error("Unable to connect to mytado with username and password")
         return False
 
-    hass.data['Mytado']= tado
+    hass.data['Mytado'] = tado
 
     for component in TADO_V1_COMPONENTS:
         load_platform(hass, component, DOMAIN, {}, config)
 
     return True
-

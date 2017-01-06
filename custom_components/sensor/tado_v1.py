@@ -203,10 +203,10 @@ class TadoData(object):
 
             try:
                 if "zone" in sensor:
-                    _LOGGER.info('querying mytado.com for zone {}'.format(json.dumps(sensor)))
+                    _LOGGER.info('querying mytado.com for zone {} {}'.format(sensor["id"], sensor["name"]))
                     data = self._tado.getState(sensor["id"])
                 if "device" in sensor:
-                    _LOGGER.info('querying mytado.com for device {}'.format(json.dumps(sensor)))
+                    _LOGGER.info('querying mytado.com for device {} {}'.format(sensor["id"], sensor["name"]))
                     data = self._tado.getDevices()[0]
 
             except (RuntimeError) as error:

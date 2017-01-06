@@ -52,4 +52,4 @@ CONST_OVERLAY_TIMER     = "TIMER"     # the temperature will be reset after a ti
 
 # Links
 * Home-Assistant (http://home-assistant.io)
-* PyTado (https://github.com/chrism0dwk/PyTado) -> (https://github.com/wmalgadey/tado_component)
+* PyTado (https://github.com/chrism0dwk/PyTado) -> (https://github.com/wmalgadey/PyTado)

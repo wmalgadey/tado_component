@@ -26,12 +26,13 @@ tado_v1:
 ## Use the new sensors in home-assistant
 For every zone in your tado setup we will create a sensor with a specific unit
 ```
-sensor.<name of tado zone>_temperature         (°C)   Attributes: { "setting" : °C, "time" : string }
-sensor.<name of tado zone>_humidity            (%)    Attributes: { "time" : string }
-sensor.<name of tado zone>_heating             (%)    Attributes: { "time" : string }
+sensor.<name of tado zone>_temperature         (°C)     Attributes: { "setting" : °C, "time" : string }
+sensor.<name of tado zone>_humidity            (%)      Attributes: { "time" : string }
+sensor.<name of tado zone>_heating             (%)      Attributes: { "time" : string }
 sensor.<name of tado zone>_power               (string)
 sensor.<name of tado zone>_link                (string)
-sensor.<name of tado zone>_tado_mode           (string)
+sensor.<name of tado zone>_tado_mode           (string) [AWAY|HOME]
+sensor.<name of tado zone>_overlay             (bool)   Attributes: { "termination" : string [TADO_MODE|MANUAL|TIMER] }
 ```
 and one sensor for the bridge
 ```

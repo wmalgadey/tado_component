@@ -122,35 +122,47 @@ class TadoSensor(Entity):
             if 'sensorDataPoints' in data:
                 self._state = float(data['sensorDataPoints']['insideTemperature']['celsius'])
                 self._state_attributes = {
-                    "time": data['sensorDataPoints']['insideTemperature']['timestamp'],
-                    "setting": float(data['setting']['temperature']['celsius'])
+                    "time": data['sensorDataPoints']['insideTemperature']['timestamp']
                 }
+
+                # temperature setting will not exist when device is off
+                if 'temperature' in data['setting'] and data['setting']['temperature'] is not None:
+                    self._state_attributes["setting"] = float(
+                        data['setting']['temperature']['celsius'])
+
         elif self.zone_variable == 'humidity':
             if 'sensorDataPoints' in data:
                 self._state = float(data['sensorDataPoints']['humidity']['percentage'])
                 self._state_attributes = {
                     "time": data['sensorDataPoints']['humidity']['timestamp'],
                 }
+
         elif self.zone_variable == 'power':
             if 'setting' in data:
                 self._state = data['setting']['power']
+
         elif self.zone_variable == 'link':
             if 'link' in data:
                 self._state = data['link']['state']
+
         elif self.zone_variable == 'heating':
             if 'activityDataPoints' in data:
                 self._state = float(data['activityDataPoints']['heatingPower']['percentage'])
                 self._state_attributes = {
                     "time": data['activityDataPoints']['heatingPower']['timestamp'],
                 }
+
         elif self.zone_variable == 'tado bridge status':
             if 'connectionState' in data:
                 self._state = data['connectionState']['value']
+
         elif self.zone_variable == 'tado mode':
             if 'tadoMode' in data:
                 self._state = data['tadoMode']
+
         elif self.zone_variable == 'overlay':
             if 'overlay' in data and data['overlay'] is not None:
+                # pylint: disable=R0204
                 self._state = True
                 self._state_attributes = {
                     "termination": data['overlay']['termination']['type'],

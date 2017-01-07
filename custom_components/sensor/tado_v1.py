@@ -122,7 +122,8 @@ class TadoSensor(Entity):
             if 'sensorDataPoints' in data:
                 self._state = float(data['sensorDataPoints']['insideTemperature']['celsius'])
                 self._state_attributes = {
-                    "time": data['sensorDataPoints']['insideTemperature']['timestamp']
+                    "time": data['sensorDataPoints']['insideTemperature']['timestamp'],
+                    "setting": 0 # setting is used in climate device
                 }
 
                 # temperature setting will not exist when device is off

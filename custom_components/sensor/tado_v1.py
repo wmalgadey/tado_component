@@ -60,7 +60,7 @@ class TadoSensor(Entity):
         self.zone_name = zone_name
         self.zone_id = zone_id
         self.zone_variable = zone_variable
-        self.unique_id = '{} {}'.format(zone_variable, zone_id)
+        self._unique_id = '{} {}'.format(zone_variable, zone_id)
         self._data_id = data_id
 
         self._state = None
@@ -74,7 +74,7 @@ class TadoSensor(Entity):
     @property
     def unique_id(self):
         """Return the unique id"""
-        return self.unique_id
+        return self._unique_id
 
     @property
     def name(self):

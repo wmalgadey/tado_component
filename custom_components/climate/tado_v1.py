@@ -26,7 +26,7 @@ CONST_DEFAULT_OFF_MODE = CONST_OVERLAY_MANUAL # will be used when switching to C
 # DOMAIN = 'tado_v1'
 
 _LOGGER = logging.getLogger(__name__)
-SENSOR_TYPES = ['temperature', 'humidity', 'heating', 'tado mode', 'power', 'overlay']
+SENSOR_TYPES = ['temperature', 'humidity', 'tado mode', 'power', 'overlay']
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Setup the climate platform."""
@@ -181,13 +181,12 @@ class TadoClimate(ClimateDevice):
 
         self.update_state(entity_id, new_state, True)
 
-        if entity_id.endswith("temperature"):
-            self._control_heating()
-
     def update_state(self, entity_type, state, update_ha):
         """update the internal state."""
         if state.state == "unknown":
             return
+
+        _LOGGER.info("%s changed to %s", entity_type, state.state)
 
         try:
             if entity_type.endswith("temperature"):
@@ -202,11 +201,6 @@ class TadoClimate(ClimateDevice):
             elif entity_type.endswith("humidity"):
                 self._cur_humidity = float(state.state)
 
-            elif entity_type.endswith("heating"):
-                heating_percent = float(state.state)
-
-                self._device_is_active = heating_percent > 0
-
             elif entity_type.endswith("tado mode"):
                 self._is_away = state.state == "AWAY"
 
@@ -214,6 +208,8 @@ class TadoClimate(ClimateDevice):
                 if state.state == "OFF":
                     self._current_operation = CONST_MODE_OFF
                     self._device_is_active = False
+                else:
+                    self._device_is_active = True
 
             elif entity_type.endswith("overlay"):
                 # if you set mode manualy to off, there will be an overlay
@@ -221,11 +217,11 @@ class TadoClimate(ClimateDevice):
                 overlay = state.state
                 termination = state.attributes.get("termination")
 
-                if overlay and self._current_operation != CONST_MODE_OFF:
-                    # there is an overlay the device is not off
+                if overlay == "True" and self._device_is_active:
+                    # there is an overlay the device is on
                     self._overlay_mode = termination
                     self._current_operation = termination
-                elif overlay is False:
+                elif overlay == "False":
                     # there is no overlay, the mode will always be
                     # "SMART_SCHEDULE"
                     self._overlay_mode = CONST_MODE_SMART_SCHEDULE

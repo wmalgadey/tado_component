@@ -216,11 +216,20 @@ class TadoClimate(ClimateDevice):
                     self._device_is_active = False
 
             elif entity_type.endswith("overlay"):
+                # if you set mode manualy to off, there will be an overlay
+                # and a termination, but we want to see the mode "OFF"
+                overlay = state.state
                 termination = state.attributes.get("termination")
 
-                if termination is not None and self._current_operation != CONST_MODE_OFF:
+                if overlay and self._current_operation != CONST_MODE_OFF:
+                    # there is an overlay the device is not off
                     self._overlay_mode = termination
                     self._current_operation = termination
+                elif overlay is False:
+                    # there is no overlay, the mode will always be
+                    # "SMART_SCHEDULE"
+                    self._overlay_mode = CONST_MODE_SMART_SCHEDULE
+                    self._current_operation = CONST_MODE_SMART_SCHEDULE
 
             if update_ha:
                 self.schedule_update_ha_state()

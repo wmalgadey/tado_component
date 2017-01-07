@@ -218,7 +218,7 @@ class TadoClimate(ClimateDevice):
             elif entity_type.endswith("overlay"):
                 termination = state.attributes.get("termination")
 
-                if termination is not None:
+                if termination is not None and self._current_operation != CONST_MODE_OFF:
                     self._overlay_mode = termination
                     self._current_operation = termination
 

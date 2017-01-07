@@ -151,7 +151,6 @@ class TadoSensor(Entity):
                 self._state = data['tadoMode']
         elif self.zone_variable == 'overlay':
             if 'overlay' in data and data['overlay'] is not None:
-                # pylint: disable=R0204
                 self._state = True
                 self._state_attributes = {
                     "termination": data['overlay']['termination']['type'],
@@ -227,6 +226,6 @@ class TadoData(object):
                     data = self._tado.getDevices()[0]
 
             except RuntimeError:
-                _LOGGER.error("Unable to connect to myTado. %s")
+                _LOGGER.error("Unable to connect to myTado. %s %s", sensor["id"], sensor["id"])
 
             self.data[data_id] = data

@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = 'tado_v1'
 
-REQUIREMENTS = ['https://github.com/wmalgadey/PyTado/archive/0.1.9.zip#PyTado==0.1.9']
+REQUIREMENTS = ['https://github.com/wmalgadey/PyTado/archive/0.1.10.zip#PyTado==0.1.10']
 
 TADO_V1_COMPONENTS = [
     'sensor', 'climate'

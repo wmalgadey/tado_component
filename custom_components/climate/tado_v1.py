@@ -98,6 +98,11 @@ class TadoClimate(ClimateDevice):
     def temperature_unit(self):
         """Return the unit of measurement."""
         return self._unit
+        
+    @property
+    def state(self):
+        """Return the current temperature as the state, instead of operation_mode"""
+        return self._cur_temp
 
     @property
     def current_humidity(self):

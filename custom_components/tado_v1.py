@@ -5,7 +5,7 @@ main file for the (unofficial) tado component
 import logging
 import urllib
 
-from homeassistant.components.discovery import load_platform
+from homeassistant.helpers.discovery import load_platform
 from homeassistant.helpers import config_validation as cv
 
 import voluptuous as vol

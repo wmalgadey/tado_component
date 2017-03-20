@@ -1,67 +1,98 @@
-﻿"""
-tado component to create a climate device for each zone
-"""
+﻿"""tado component to create a climate device for each zone."""
 
 import logging
 
 from homeassistant.const import TEMP_CELSIUS
-from homeassistant.helpers.event import track_state_change
 
 from homeassistant.components.climate import (
     ClimateDevice)
 from homeassistant.const import (
-    ATTR_UNIT_OF_MEASUREMENT, ATTR_TEMPERATURE)
+    ATTR_TEMPERATURE)
+from homeassistant.components.tado import (
+    DATA_TADO)
 
-CONST_MODE_SMART_SCHEDULE = "SMART_SCHEDULE" # Default mytado mode
-CONST_MODE_OFF = "OFF" # Switch off heating in a zone
+CONST_MODE_SMART_SCHEDULE = "SMART_SCHEDULE"  # Default mytado mode
+CONST_MODE_OFF = "OFF"  # Switch off heating in a zone
 
 # When we change the temperature setting, we need an overlay mode
-CONST_OVERLAY_TADO_MODE = "TADO_MODE" # wait until tado changes the mode automatic
-CONST_OVERLAY_MANUAL = "MANUAL" # the user has change the temperature or mode manually
-CONST_OVERLAY_TIMER = "TIMER" # the temperature will be reset after a timespan
+# wait until tado changes the mode automatic
+CONST_OVERLAY_TADO_MODE = "TADO_MODE"
+# the user has change the temperature or mode manually
+CONST_OVERLAY_MANUAL = "MANUAL"
+# the temperature will be reset after a timespan
+CONST_OVERLAY_TIMER = "TIMER"
 
-CONST_DEFAULT_OPERATION_MODE = CONST_OVERLAY_TADO_MODE # will be used when changing temperature
-CONST_DEFAULT_OFF_MODE = CONST_OVERLAY_MANUAL # will be used when switching to CONST_MODE_OFF
-
-# DOMAIN = 'tado_v1'
+OPERATION_LIST = {
+    CONST_OVERLAY_MANUAL: "Manual",
+    CONST_OVERLAY_TIMER: "Timer",
+    CONST_OVERLAY_TADO_MODE: "Tado mode",
+    CONST_MODE_SMART_SCHEDULE: "Smart schedule",
+    CONST_MODE_OFF: "Off"}
 
 _LOGGER = logging.getLogger(__name__)
-SENSOR_TYPES = ['temperature', 'humidity', 'tado mode', 'power', 'overlay']
+
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Setup the climate platform."""
-    # pylint: disable=W0613
-
     # get the PyTado object from the hub component
-    tado = hass.data['Mytado']
+    tado = hass.data[DATA_TADO]
 
     try:
-        zones = tado.getZones()
+        zones = tado.get_zones()
     except RuntimeError:
         _LOGGER.error("Unable to get zone info from mytado")
         return False
 
-    tado_data = TadoData(tado)
-
     climate_devices = []
     for zone in zones:
-        climate_devices.append(tado_data.create_climate_device(hass, zone['name'], zone['id']))
+        climate_devices.append(create_climate_device(tado, hass,
+                                                     zone,
+                                                     zone['name'],
+                                                     zone['id']))
 
     if len(climate_devices) > 0:
-        add_devices(climate_devices)
-        tado_data.activate_tracking(hass)
+        add_devices(climate_devices, True)
         return True
     else:
         return False
 
+
+def create_climate_device(tado, hass, zone, name, zone_id):
+    """Create a climate device."""
+    capabilities = tado.get_capabilities(zone_id)
+
+    unit = TEMP_CELSIUS
+    min_temp = float(capabilities["temperatures"]["celsius"]["min"])
+    max_temp = float(capabilities["temperatures"]["celsius"]["max"])
+    ac_mode = capabilities["type"] != "HEATING"
+
+    data_id = 'zone {} {}'.format(name, zone_id)
+    device = TadoClimate(tado,
+                         name, zone_id, data_id,
+                         hass.config.units.temperature(min_temp, unit),
+                         hass.config.units.temperature(max_temp, unit),
+                         ac_mode)
+
+    tado.add_sensor(data_id, {
+        "id": zone_id,
+        "zone": zone,
+        "name": name,
+        "climate": device
+    })
+
+    return device
+
+
 class TadoClimate(ClimateDevice):
     """Representation of a tado climate device."""
-    # pylint: disable=R0902, R0913
 
-    def __init__(self, tado, zone_name, zone_id,
-                 min_temp, max_temp, target_temp, ac_mode,
+    def __init__(self, store, zone_name, zone_id, data_id,
+                 min_temp, max_temp, ac_mode,
                  tolerance=0.3):
-        self._tado = tado
+        """Initialization of TadoClimate device."""
+        self._store = store
+        self._data_id = data_id
+
         self.zone_name = zone_name
         self.zone_id = zone_id
 
@@ -75,34 +106,16 @@ class TadoClimate(ClimateDevice):
         self._is_away = False
         self._min_temp = min_temp
         self._max_temp = max_temp
-        self._target_temp = target_temp
+        self._target_temp = None
         self._tolerance = tolerance
-        self._unit = TEMP_CELSIUS
 
-        self._operation_list = [CONST_OVERLAY_MANUAL, CONST_OVERLAY_TIMER, CONST_OVERLAY_TADO_MODE,
-                                CONST_MODE_SMART_SCHEDULE, CONST_MODE_OFF]
         self._current_operation = CONST_MODE_SMART_SCHEDULE
-        self._overlay_mode = self._current_operation
-
-    @property
-    def should_poll(self):
-        """No Polling needed for tado climate device (because it reuses sensors)."""
-        return False
+        self._overlay_mode = CONST_MODE_SMART_SCHEDULE
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return self.zone_name
-
-    @property
-    def temperature_unit(self):
-        """Return the unit of measurement."""
-        return self._unit
-        
-    @property
-    def state(self):
-        """Return the current temperature as the state, instead of operation_mode"""
-        return self._cur_temp
 
     @property
     def current_humidity(self):
@@ -116,23 +129,18 @@ class TadoClimate(ClimateDevice):
 
     @property
     def current_operation(self):
-        """Return current operation ie. heat, cool, idle."""
-        return self._current_operation
+        """Return current readable operation mode."""
+        return OPERATION_LIST.get(self._current_operation)
 
     @property
     def operation_list(self):
-        """List of available operation modes."""
-        return self._operation_list
+        """List of available operation modes (readable)."""
+        return list(OPERATION_LIST.values())
 
     @property
     def is_away_mode_on(self):
         """Return true if away mode is on."""
         return self._is_away
-
-    @property
-    def _is_device_active(self):
-        """If the toggleable device is currently active."""
-        return self._device_is_active
 
     @property
     def target_temperature(self):
@@ -145,98 +153,103 @@ class TadoClimate(ClimateDevice):
         if temperature is None:
             return
 
-        self._current_operation = CONST_DEFAULT_OPERATION_MODE
+        self._current_operation = CONST_OVERLAY_TADO_MODE
         self._overlay_mode = None
         self._target_temp = temperature
         self._control_heating()
-        self.update_ha_state()
 
-    def set_operation_mode(self, operation_mode):
-        """Set new target temperature."""
+    def set_operation_mode(self, readable_operation_mode):
+        """Set new operation mode."""
+        operation_mode = CONST_MODE_SMART_SCHEDULE
+
+        for mode, readable in OPERATION_LIST.items():
+            if readable == readable_operation_mode:
+                operation_mode = mode
+                break
+
         self._current_operation = operation_mode
         self._overlay_mode = None
         self._control_heating()
-        self.update_ha_state()
 
     @property
     def min_temp(self):
         """Return the minimum temperature."""
-        # pylint: disable=no-member
         if self._min_temp:
             return self._min_temp
         else:
             # get default temp from super class
-            return ClimateDevice.min_temp.fget(self)
+            return super().min_temp
 
     @property
     def max_temp(self):
         """Return the maximum temperature."""
-        # pylint: disable=no-member
         if self._max_temp:
             return self._max_temp
         else:
-            # Get default temp from super class
-            return ClimateDevice.max_temp.fget(self)
+            #  Get default temp from super class
+            return super().max_temp
 
-    def sensor_changed(self, entity_id, old_state, new_state):
-        # pylint: disable=W0613
-        """Called when a depending sensor changes."""
-        if new_state is None or new_state.state is None:
-            return
+    def update(self):
+        """Update the state of this climate device."""
+        self._store.update()
 
-        self.update_state(entity_id, new_state, True)
+        data = self._store.get_data(self._data_id)
 
-    def update_state(self, entity_type, state, update_ha):
-        """update the internal state."""
-        if state.state == "unknown":
-            return
+        if 'sensorDataPoints' in data:
+            sensor_data = data['sensorDataPoints']
+            temperature = float(
+                sensor_data['insideTemperature']['celsius'])
+            humidity = float(
+                sensor_data['humidity']['percentage'])
+            setting = 0
 
-        _LOGGER.info("%s changed to %s", entity_type, state.state)
+            # temperature setting will not exist when device is off
+            if 'temperature' in data['setting'] and \
+                    data['setting']['temperature'] is not None:
+                setting = float(
+                    data['setting']['temperature']['celsius'])
 
-        try:
-            if entity_type.endswith("temperature"):
-                unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+            unit = TEMP_CELSIUS
 
-                self._cur_temp = self.hass.config.units.temperature(
-                    float(state.state), unit)
+            self._cur_temp = self.hass.config.units.temperature(
+                temperature, unit)
 
-                self._target_temp = self.hass.config.units.temperature(
-                    float(state.attributes.get("setting")), unit)
+            self._target_temp = self.hass.config.units.temperature(
+                setting, unit)
 
-            elif entity_type.endswith("humidity"):
-                self._cur_humidity = float(state.state)
+            self._cur_humidity = humidity
 
-            elif entity_type.endswith("tado mode"):
-                self._is_away = state.state == "AWAY"
+        if 'tadoMode' in data:
+            mode = data['tadoMode']
+            self._is_away = mode == "AWAY"
 
-            elif entity_type.endswith("power"):
-                if state.state == "OFF":
-                    self._current_operation = CONST_MODE_OFF
-                    self._device_is_active = False
-                else:
-                    self._device_is_active = True
+        if 'setting' in data:
+            power = data['setting']['power']
+            if power == "OFF":
+                self._current_operation = CONST_MODE_OFF
+                self._device_is_active = False
+            else:
+                self._device_is_active = True
 
-            elif entity_type.endswith("overlay"):
-                # if you set mode manualy to off, there will be an overlay
-                # and a termination, but we want to see the mode "OFF"
-                overlay = state.state
-                termination = state.attributes.get("termination")
+        if 'overlay' in data and data['overlay'] is not None:
+            overlay = True
+            termination = data['overlay']['termination']['type']
+        else:
+            overlay = False
+            termination = ""
 
-                if overlay == "True" and self._device_is_active:
-                    # there is an overlay the device is on
-                    self._overlay_mode = termination
-                    self._current_operation = termination
-                elif overlay == "False":
-                    # there is no overlay, the mode will always be
-                    # "SMART_SCHEDULE"
-                    self._overlay_mode = CONST_MODE_SMART_SCHEDULE
-                    self._current_operation = CONST_MODE_SMART_SCHEDULE
+        #  if you set mode manualy to off, there will be an overlay
+        #  and a termination, but we want to see the mode "OFF"
 
-            if update_ha:
-                self.schedule_update_ha_state()
-
-        except ValueError:
-            _LOGGER.error("Unable to update from sensor: %s", entity_type)
+        if overlay and self._device_is_active:
+            #  there is an overlay the device is on
+            self._overlay_mode = termination
+            self._current_operation = termination
+        else:
+            #  there is no overlay, the mode will always be
+            #  "SMART_SCHEDULE"
+            self._overlay_mode = CONST_MODE_SMART_SCHEDULE
+            self._current_operation = CONST_MODE_SMART_SCHEDULE
 
     def _control_heating(self):
         """Send new target temperature to mytado."""
@@ -250,67 +263,23 @@ class TadoClimate(ClimateDevice):
             return
 
         if self._current_operation == CONST_MODE_SMART_SCHEDULE:
-            _LOGGER.info('Switching mytado.com to SCHEDULE (default) for zone %s', self.zone_name)
-            self._tado.resetZoneOverlay(self.zone_id)
+            _LOGGER.info('Switching mytado.com to SCHEDULE (default) '
+                         'for zone %s', self.zone_name)
+            self._store.reset_zone_overlay(self.zone_id)
             self._overlay_mode = self._current_operation
             return
 
         if self._current_operation == CONST_MODE_OFF:
-            _LOGGER.info('Switching mytado.com to OFF for zone %s', self.zone_name)
-            self._tado.setZoneOverlay(self.zone_id, CONST_DEFAULT_OFF_MODE)
+            _LOGGER.info('Switching mytado.com to OFF for zone %s',
+                         self.zone_name)
+            self._store.set_zone_overlay(self.zone_id, CONST_OVERLAY_MANUAL)
             self._overlay_mode = self._current_operation
             return
 
-        _LOGGER.info("Switching mytado.com to %s mode for zone %s",
+        _LOGGER.info('Switching mytado.com to %s mode for zone %s',
                      self._current_operation, self.zone_name)
-        self._tado.setZoneOverlay(self.zone_id, self._current_operation, self._target_temp)
+        self._store.set_zone_overlay(self.zone_id,
+                                     self._current_operation,
+                                     self._target_temp)
 
         self._overlay_mode = self._current_operation
-
-class TadoData(object):
-    """Tado data object to control the tado functionality"""
-    def __init__(self, tado):
-        self._tado = tado
-        self._tracking_active = False
-
-        self.sensors = []
-
-    def create_climate_device(self, hass, name, tado_id):
-        """create a climate device"""
-        capabilities = self._tado.getCapabilities(tado_id)
-
-        min_temp = float(capabilities["temperatures"]["celsius"]["min"])
-        max_temp = float(capabilities["temperatures"]["celsius"]["max"])
-        target_temp = 21
-        ac_mode = capabilities["type"] != "HEATING"
-
-        device_id = 'climate {} {}'.format(name, tado_id)
-        device = TadoClimate(self._tado, name, tado_id,
-                             min_temp, max_temp, target_temp, ac_mode)
-        sensor = {
-            "id"      : device_id,
-            "device"  : device,
-            "sensors" : []
-        }
-
-        self.sensors.append(sensor)
-
-        for sensor_type in SENSOR_TYPES:
-            entity_id = 'sensor.{} {}'.format(name, sensor_type).lower().replace(" ", "_")
-            sensor["sensors"].append(entity_id)
-
-            sensor_state = hass.states.get(entity_id)
-            if sensor_state:
-                device.update_state(sensor_type, sensor_state, False)
-
-        return device
-
-    def activate_tracking(self, hass):
-        """activate tracking of dependend sensors"""
-        if self._tracking_active is False:
-            for data in self.sensors:
-                for entity_id in data["sensors"]:
-                    track_state_change(hass, entity_id, data["device"].sensor_changed)
-                    _LOGGER.info("activated state tracking for %s.", entity_id)
-
-        self._tracking_active = True

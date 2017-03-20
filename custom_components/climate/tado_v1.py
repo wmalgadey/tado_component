@@ -8,8 +8,8 @@ from homeassistant.components.climate import (
     ClimateDevice)
 from homeassistant.const import (
     ATTR_TEMPERATURE)
-from homeassistant.components.tado import (
-    DATA_TADO)
+
+DATA_TADO = 'tado_data'
 
 CONST_MODE_SMART_SCHEDULE = "SMART_SCHEDULE"  # Default mytado mode
 CONST_MODE_OFF = "OFF"  # Switch off heating in a zone
@@ -101,6 +101,7 @@ class TadoClimate(ClimateDevice):
         self._active = False
         self._device_is_active = False
 
+        self._unit = TEMP_CELSIUS
         self._cur_temp = None
         self._cur_humidity = None
         self._is_away = False
@@ -141,6 +142,11 @@ class TadoClimate(ClimateDevice):
     def is_away_mode_on(self):
         """Return true if away mode is on."""
         return self._is_away
+
+    @property
+    def temperature_unit(self):
+        """The unit of measurement used by the platform."""
+        return self._unit
 
     @property
     def target_temperature(self):
@@ -194,6 +200,10 @@ class TadoClimate(ClimateDevice):
         self._store.update()
 
         data = self._store.get_data(self._data_id)
+        
+        if data is None:
+            _LOGGER.error('no data recieved for %s', self.zone_name)
+            return
 
         if 'sensorDataPoints' in data:
             sensor_data = data['sensorDataPoints']

@@ -4,8 +4,7 @@ import logging
 
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.entity import Entity
-
-DATA_TADO = 'tado_data'
+DATA_TADO = 'tado_v1_data'
 
 _LOGGER = logging.getLogger(__name__)
 SENSOR_TYPES = ['temperature', 'humidity', 'power',
@@ -131,9 +130,10 @@ class TadoSensor(Entity):
         self._store.update()
 
         data = self._store.get_data(self._data_id)
-        
+
         if data is None:
-            _LOGGER.error('no data recieved for %s', self.zone_name)
+            _LOGGER.debug('Recieved no data for zone %s',
+                          self.zone_name)
             return
 
         unit = TEMP_CELSIUS

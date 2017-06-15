@@ -3,8 +3,7 @@ Custom home-assistant component for tado (using my fork of PyTado for a py3 comp
 
 It is highly inspired by https://community.home-assistant.io/t/tado-api-json/272/5 and the comments by diplix (https://community.home-assistant.io/users/diplix)
 
-It is called `tado_v1` because it is build upon the unofficial API used by the myTado.com-Webapp.
-
+It is called `tado_v1` because it is build upon the unofficial API used by the myTado.com-Webapp. It will be merged as `tado` component in hass main repository, but I will leave this here for those willing to use a custom component.
 
 # Howto use
 I created a new custom_component which adds multiple sensors for every zone in myTado.com (not for every device)
@@ -19,8 +18,8 @@ For hass manual installation it is:
 ## Edit configuration.yaml
 ```
 tado_v1:
-    mytado_username: <.. your username ..>
-    mytado_password: <.. your password ..>
+    username: <.. your username ..>
+    password: <.. your password ..>
 ```
 
 ## Use the new sensors in home-assistant

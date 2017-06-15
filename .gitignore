@@ -1,2 +1,11 @@
+# Hide some OS X stuff
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
 
-*.pyc
+# GITHUB Proposed Python stuff:
+*.py[cod]
+
+# Visual Studio Code
+.vscode

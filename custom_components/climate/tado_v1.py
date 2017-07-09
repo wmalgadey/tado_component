@@ -295,8 +295,15 @@ class TadoClimate(ClimateDevice):
                 termination = overlay_data['termination']['type']
 
                 if 'setting' in overlay_data:
-                    cooling = overlay_data['setting']['mode'] == 'COOL'
-                    fan_speed = overlay_data['setting']['fanSpeed']
+                    setting_data = overlay_data['setting']
+                    setting = setting is not None
+
+                if setting:
+                    if 'mode' in setting_data:
+                        cooling = setting_data['mode'] == 'COOL'
+
+                    if 'fanSpeed' in setting_data:
+                        fan_speed = setting_data['fanSpeed']
 
             # If you set mode manualy to off, there will be an overlay
             # and a termination, but we want to see the mode "OFF"

@@ -19,10 +19,12 @@ REQUIREMENTS = ['python-tado==0.2.2']
 
 _LOGGER = logging.getLogger(__name__)
 
+CONF_UPDATE_INTERVAL = 'update_interval'
+
 DATA_TADO = 'tado_v1_data'
 DOMAIN = 'tado_v1'
 
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
 
 TADO_COMPONENTS = [
     'sensor', 'climate'
@@ -31,7 +33,9 @@ TADO_COMPONENTS = [
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_USERNAME): cv.string,
-        vol.Required(CONF_PASSWORD): cv.string
+        vol.Required(CONF_PASSWORD): cv.string,
+        vol.Optional(CONF_UPDATE_INTERVAL, default=MIN_TIME_BETWEEN_UPDATES): (
+            vol.All(cv.time_period, cv.positive_timedelta))
     })
 }, extra=vol.ALLOW_EXTRA)
 

@@ -354,7 +354,8 @@ class TadoClimate(ClimateDevice):
 
         _LOGGER.info("Switching mytado.com to %s mode for zone %s",
                      self._current_operation, self.zone_name)
+
         self._store.set_zone_overlay(
-            self.zone_id, self._current_operation, self._target_temp)
+            self.zone_id, self.ac_mode, self._current_operation, self._target_temp)
 
         self._overlay_mode = self._current_operation
